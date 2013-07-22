@@ -99,6 +99,12 @@ static char kAFImageRequestOperationObjectKey;
 }
 
 - (void)setImageWithURL:(NSURL *)url
+placeholderImage:(UIImage *)placeholderImage
+{
+    [self setImageWithURL:url placeholderImage:placeholderImage blurRadius:0.0 blurryImageSuffix:nil];
+}
+
+- (void)setImageWithURL:(NSURL *)url
        placeholderImage:(UIImage *)placeholderImage
              blurRadius:(float)radius
       blurryImageSuffix:(NSString *)suffix
@@ -139,7 +145,7 @@ static char kAFImageRequestOperationObjectKey;
                 
                 dispatch_async(image_request_operation_processing_queue(), ^(void) {
                     
-                    UIImage *result = [self blur:responseObject withRadius:radius];
+                    UIImage *result = radius > 0 ? [self blur:responseObject withRadius:radius] : responseObject;
                     [[[self class] af_sharedImageCache] cacheImage:result
                                                         forRequest:urlRequest
                                                         withSuffix:suffix];
