@@ -50,6 +50,8 @@ static dispatch_queue_t image_request_operation_processing_queue() {
 #pragma mark -
 
 static char kAFImageRequestOperationObjectKey;
+static AFImageRequestOperation *playbackImageRequestOperation;
+static 
 
 @interface UIImageView (_AFNetworking)
 @property (readwrite, nonatomic, strong, setter = af_setImageRequestOperation:) AFImageRequestOperation *af_imageRequestOperation;
@@ -138,45 +140,56 @@ placeholderImage:(UIImage *)placeholderImage
         if (placeholderImage) {
             self.image = placeholderImage;
         }
-
-        AFImageRequestOperation *requestOperation = [[AFImageRequestOperation alloc] initWithRequest:urlRequest];
-        [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
-            if ([urlRequest isEqual:[self.af_imageRequestOperation request]]) {
-                
-                dispatch_async(image_request_operation_processing_queue(), ^(void) {
+        
+        AFImageRequestOperation *requestOperation = [AFImageRequestOperation
+   imageRequestOperationWithRequest:urlRequest
+                blurProcessingBlock:^(UIImage *image, float r){
                     
-                    UIImage *result = radius > 0 ? [self blur:responseObject withRadius:radius] : responseObject;
-                    [[[self class] af_sharedImageCache] cacheImage:result
-                                                        forRequest:urlRequest
-                                                        withSuffix:suffix];
+                    CIContext *context = [CIContext contextWithOptions:nil];
+                    CIImage *inputImage = [[CIImage alloc] initWithImage:image];
                     
+                    CIFilter *blurFilter = [CIFilter filterWithName:@"CIGaussianBlur"
+                                                      keysAndValues:kCIInputImageKey, inputImage, @"inputRadius",
+                                            [NSNumber numberWithFloat:r], nil];
+                    
+                    CIImage *result = [blurFilter valueForKey: @"outputImage"];
+                    CGImageRef cgImage = [context createCGImage:result fromRect:[inputImage extent]];
+                    
+                    return [UIImage imageWithCGImage:cgImage];
+                }
+                        withRadius:radius
+            success:^(AFHTTPRequestOperation *operation, UIImage *image, UIImage *processedImage) {
+                if ([urlRequest isEqual:[self.af_imageRequestOperation request]]) {
+                                                             
                     dispatch_async(operation.successCallbackQueue ?: dispatch_get_main_queue(), ^(void) {
                         if (success) {
-                            success(operation.request, operation.response, result);
-                        } else if (responseObject) {
-                            self.image = result;
+                            success(operation.request, operation.response, processedImage);
+                        } else if (processedImage) {
+                            self.image = processedImage;
                         }
                     });
+                                                             
+                    if (self.af_imageRequestOperation == operation) {
+                        self.af_imageRequestOperation = nil;
+                    }
+                }
+                                                         
+                [[[self class] af_sharedImageCache] cacheImage:image forRequest:urlRequest];
+                [[[self class] af_sharedImageCache] cacheImage:processedImage
+                                                    forRequest:urlRequest
+                                                    withSuffix:suffix];
+            }
+            failure:^(AFHTTPRequestOperation *operation, NSError *error){
+                if ([urlRequest isEqual:[self.af_imageRequestOperation request]]) {
+                    if (failure) {
+                        failure(operation.request, operation.response, error);
+                    }
                     
-                });
-
-                if (self.af_imageRequestOperation == operation) {
-                    self.af_imageRequestOperation = nil;
+                    if (self.af_imageRequestOperation == operation) {
+                        self.af_imageRequestOperation = nil;
+                    }
                 }
-            }
-
-            [[[self class] af_sharedImageCache] cacheImage:responseObject forRequest:urlRequest];
-        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-            if ([urlRequest isEqual:[self.af_imageRequestOperation request]]) {
-                if (failure) {
-                    failure(operation.request, operation.response, error);
-                }
-
-                if (self.af_imageRequestOperation == operation) {
-                    self.af_imageRequestOperation = nil;
-                }
-            }
-        }];
+            }];
 
         self.af_imageRequestOperation = requestOperation;
 
@@ -184,9 +197,74 @@ placeholderImage:(UIImage *)placeholderImage
     }
 }
 
+- (void)setPlaybackImageWithURLRequest:(NSURL *)url
+                       success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response))success
+                       failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
+{
+    
+    NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:url];
+    [urlRequest addValue:@"image/*" forHTTPHeaderField:@"Accept"];
+    
+    [self cancelPlaybackImageRequestOperation];
+    
+    UIImage *cachedImage = [[[self class] af_sharedImageCache] cachedImageForRequest:urlRequest];
+    
+    if (cachedImage) {
+        if (success) {
+            success(nil, nil);
+        }
+        
+        self.image = cachedImage;
+        playbackImageRequestOperation = nil;
+        
+    } else {
+        
+        AFImageRequestOperation *requestOperation = [[AFImageRequestOperation alloc] initWithRequest:urlRequest];
+        [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
+            if ([urlRequest isEqual:[playbackImageRequestOperation request]]) {
+                    
+                dispatch_async(operation.successCallbackQueue ?: dispatch_get_main_queue(), ^(void) {
+                    if (success) {
+                        success(operation.request, operation.response);
+                    }
+                    if (responseObject) {
+                        self.image = responseObject;
+                    }
+                });
+                
+                if (playbackImageRequestOperation == operation) {
+                    playbackImageRequestOperation = nil;
+                }
+            }
+            
+            [[[self class] af_sharedImageCache] cacheImage:responseObject forRequest:urlRequest];
+            
+        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+            if ([urlRequest isEqual:[playbackImageRequestOperation request]]) {
+                if (failure) {
+                    failure(operation.request, operation.response, error);
+                }
+                
+                if (playbackImageRequestOperation == operation) {
+                    playbackImageRequestOperation = nil;
+                }
+            }
+        }];
+        
+        playbackImageRequestOperation = requestOperation;
+        
+        [[[self class] af_sharedImageRequestOperationQueue] addOperation:playbackImageRequestOperation];
+    }
+}
+
 - (void)cancelImageRequestOperation {
     [self.af_imageRequestOperation cancel];
     self.af_imageRequestOperation = nil;
+}
+
+- (void)cancelPlaybackImageRequestOperation {
+    [playbackImageRequestOperation cancel];
+    playbackImageRequestOperation = nil;
 }
 
 - (UIImage *)blur:(UIImage *)image withRadius:(float)radius

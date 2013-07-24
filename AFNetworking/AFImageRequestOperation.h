@@ -88,6 +88,15 @@
 										 success:(void (^)(NSImage *image))success;
 #endif
 
+
+
++ (instancetype)imageRequestOperationWithRequest:(NSURLRequest *)urlRequest
+                             blurProcessingBlock:(UIImage *(^)(UIImage * image, float r))imageProcessingBlock
+                                      withRadius:(float)radius
+										 success:(void (^)(AFHTTPRequestOperation *operation, UIImage *image, UIImage *processedImage))success
+										 failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure;
+
+
 /**
  Creates and returns an `AFImageRequestOperation` object and sets the specified success callback.
 
