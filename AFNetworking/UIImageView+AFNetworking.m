@@ -175,17 +175,19 @@ static
 - (void)setImageWithURL:(NSURL *)url
        placeholderImage:(UIImage *)placeholderImage
              blurRadius:(float)radius
+             themeColor:(UIColor *)color
       blurryImageSuffix:(NSString *)suffix
 {
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     [request addValue:@"image/*" forHTTPHeaderField:@"Accept"];
     
-    [self setImageWithURLRequest:request placeholderImage:placeholderImage blurRadius:radius blurryImageSuffix:suffix success:nil failure:nil];
+    [self setImageWithURLRequest:request placeholderImage:placeholderImage blurRadius:radius themeColor:color blurryImageSuffix:suffix success:nil failure:nil];
 }
 
 - (void)setImageWithURLRequest:(NSURLRequest *)urlRequest
               placeholderImage:(UIImage *)placeholderImage
                     blurRadius:(float)radius
+                    themeColor:(UIColor *)color
              blurryImageSuffix:(NSString *)suffix
                        success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image))success
                        failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
@@ -209,14 +211,17 @@ static
         
         AFImageRequestOperation *requestOperation = [AFImageRequestOperation
             imageRequestOperationWithRequest:urlRequest
-                blurProcessingBlock:^(UIImage *image, float r){
+                blurProcessingBlock:^(UIImage *image, float radius, UIColor *color){
                     
                     CIContext *context = [CIContext contextWithOptions:nil];
                     CIImage *inputImage = [[CIImage alloc] initWithImage:image];
                     
                     //First, create some darkness
                     CIFilter* blackGenerator = [CIFilter filterWithName:@"CIConstantColorGenerator"];
-                    CIColor* black = [CIColor colorWithString:@"0.0 0.0 0.0 0.6"];
+                    CGFloat r, g, b, a;
+                    [color getRed: &r green:&g blue:&b alpha:&a];
+                    CIColor* black = [CIColor colorWithString:
+                                      [NSString stringWithFormat:@"%f %f %f 0.6", r, g, b]];
                     [blackGenerator setValue:black forKey:@"inputColor"];
                     CIImage* blackImage = [blackGenerator valueForKey:@"outputImage"];
                     
@@ -229,7 +234,7 @@ static
                     CIFilter *blurFilter = [CIFilter filterWithName:@"CIGaussianBlur"];
                     [blurFilter setDefaults];
                     [blurFilter setValue:darkenedImage forKey:kCIInputImageKey];
-                    [blurFilter setValue:[NSNumber numberWithFloat:r] forKey:@"inputRadius"];
+                    [blurFilter setValue:[NSNumber numberWithFloat:radius] forKey:@"inputRadius"];
                     CIImage *result = [blurFilter valueForKey: @"outputImage"];
                     
                     CGImageRef cgImage = [context createCGImage:result fromRect:[inputImage extent]];
@@ -237,7 +242,7 @@ static
                     return [UIImage imageWithCGImage:cgImage];
                 }
                 withRadius:radius
-                                                     
+                color:color
                 success:^(AFHTTPRequestOperation *operation, UIImage *image, UIImage *processedImage) {
                     if ([urlRequest isEqual:[self.af_imageRequestOperation request]]) {
                                                              

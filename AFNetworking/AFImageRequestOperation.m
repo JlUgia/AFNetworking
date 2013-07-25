@@ -155,8 +155,9 @@ static UIImage * AFInflatedImageFromResponseWithDataAtScale(NSHTTPURLResponse *r
 
 #if defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
 + (instancetype)imageRequestOperationWithRequest:(NSURLRequest *)urlRequest
-                             blurProcessingBlock:(UIImage *(^)(UIImage * image, float r))imageProcessingBlock
+                             blurProcessingBlock:(UIImage *(^)(UIImage * image, float radius, UIColor *color))imageProcessingBlock
                                       withRadius:(float)radius
+                                           color:(UIColor *)color
 										 success:(void (^)(AFHTTPRequestOperation *operation, UIImage *image, UIImage *processedImage))success
 										 failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
 {
@@ -166,7 +167,7 @@ static UIImage * AFInflatedImageFromResponseWithDataAtScale(NSHTTPURLResponse *r
             UIImage *image = responseObject;
             if (imageProcessingBlock) {
                 dispatch_async(image_request_operation_processing_queue(), ^(void) {
-                    UIImage *processedImage = imageProcessingBlock(image, radius);
+                    UIImage *processedImage = imageProcessingBlock(image, radius, color);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu"
                     dispatch_async(operation.successCallbackQueue ?: dispatch_get_main_queue(), ^(void) {
