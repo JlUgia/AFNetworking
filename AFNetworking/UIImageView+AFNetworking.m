@@ -215,29 +215,37 @@ static
                     
                     CIContext *context = [CIContext contextWithOptions:nil];
                     CIImage *inputImage = [[CIImage alloc] initWithImage:image];
+                    CIImage *outputImage;
                     
-                    //First, create some darkness
+                    // First, create some darkness
                     CIFilter* blackGenerator = [CIFilter filterWithName:@"CIConstantColorGenerator"];
                     CGFloat r, g, b, a;
                     [color getRed: &r green:&g blue:&b alpha:&a];
                     CIColor* black = [CIColor colorWithString:
                                       [NSString stringWithFormat:@"%f %f %f 0.6", r, g, b]];
                     [blackGenerator setValue:black forKey:@"inputColor"];
-                    CIImage* blackImage = [blackGenerator valueForKey:@"outputImage"];
+                    outputImage = [blackGenerator valueForKey:@"outputImage"];
                     
-                    //Second, apply that black
+                    // Second, apply that black
                     CIFilter *compositeFilter = [CIFilter filterWithName:@"CIMultiplyBlendMode"];
-                    [compositeFilter setValue:blackImage forKey:kCIInputImageKey];
+                    [compositeFilter setValue:outputImage forKey:kCIInputImageKey];
                     [compositeFilter setValue:inputImage forKey:@"inputBackgroundImage"];
-                    CIImage *darkenedImage = [compositeFilter outputImage];
+                    outputImage = [compositeFilter outputImage];
+                    
+                    // Prepare to avoid blur edges and blur
+                    CGAffineTransform transform = CGAffineTransformIdentity;
+                    CIFilter *clampFilter = [CIFilter filterWithName:@"CIAffineClamp"];
+                    [clampFilter setValue:outputImage forKey:kCIInputImageKey];
+                    [clampFilter setValue:[NSValue valueWithBytes:&transform objCType:@encode(CGAffineTransform)] forKey:@"inputTransform"];
+                    outputImage = [clampFilter outputImage];
                                                          
                     CIFilter *blurFilter = [CIFilter filterWithName:@"CIGaussianBlur"];
                     [blurFilter setDefaults];
-                    [blurFilter setValue:darkenedImage forKey:kCIInputImageKey];
+                    [blurFilter setValue:outputImage forKey:kCIInputImageKey];
                     [blurFilter setValue:[NSNumber numberWithFloat:radius] forKey:@"inputRadius"];
-                    CIImage *result = [blurFilter valueForKey: @"outputImage"];
+                    outputImage = [blurFilter outputImage];
                     
-                    CGImageRef cgImage = [context createCGImage:result fromRect:[inputImage extent]];
+                    CGImageRef cgImage = [context createCGImage:outputImage fromRect:[inputImage extent]];
                                                          
                     return [UIImage imageWithCGImage:cgImage];
                 }
