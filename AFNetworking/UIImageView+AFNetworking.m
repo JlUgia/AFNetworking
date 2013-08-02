@@ -121,8 +121,6 @@ static
     UIImage *cachedImage = [[[self class] af_sharedImageCache] cachedImageForRequest:urlRequest];
     
     if (cachedImage) {
-        self.af_imageRequestOperation = nil;
-
         if (success) {
             success(nil, nil);
         }
@@ -138,7 +136,8 @@ static
         
         AFImageRequestOperation *requestOperation = [[AFImageRequestOperation alloc] initWithRequest:urlRequest];
         [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
-            if ([urlRequest isEqual:[playbackImageRequestOperation request]]) {
+            if ([urlRequest isEqual:[playbackImageRequestOperation request]])
+            {
                     
                 dispatch_async(operation.successCallbackQueue ?: dispatch_get_main_queue(), ^(void) {
                     if (success) {
@@ -149,7 +148,8 @@ static
                     }
                 });
                 
-                if (playbackImageRequestOperation == operation) {
+                if (playbackImageRequestOperation == operation)
+                {
                     playbackImageRequestOperation = nil;
                 }
             }
@@ -157,17 +157,16 @@ static
             [[[self class] af_sharedImageCache] cacheImage:responseObject forRequest:urlRequest];
             
         } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-            if ([urlRequest isEqual:[playbackImageRequestOperation request]]) {
-                if (failure) {
+            if ([urlRequest isEqual:[playbackImageRequestOperation request]])
+            {
+                if (failure)
+                {
                     failure(operation.request, operation.response, error);
                 }
                 
-                if (playbackImageRequestOperation == operation) {
+                if (playbackImageRequestOperation == operation)
+                {
                     playbackImageRequestOperation = nil;
-                }
-
-                if (failure) {
-                    failure(operation.request, operation.response, error);
                 }
             }
         }];
