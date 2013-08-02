@@ -155,6 +155,42 @@ static UIImage * AFInflatedImageFromResponseWithDataAtScale(NSHTTPURLResponse *r
 
 #if defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
 + (instancetype)imageRequestOperationWithRequest:(NSURLRequest *)urlRequest
+                             blurProcessingBlock:(UIImage *(^)(UIImage * image, float radius, UIColor *color))imageProcessingBlock
+                                      withRadius:(float)radius
+                                           color:(UIColor *)color
+										 success:(void (^)(AFHTTPRequestOperation *operation, UIImage *image, UIImage *processedImage))success
+										 failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
+{
+    AFImageRequestOperation *requestOperation = [(AFImageRequestOperation *)[self alloc] initWithRequest:urlRequest];
+    [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
+        if (success) {
+            UIImage *image = responseObject;
+            if (imageProcessingBlock) {
+                dispatch_async(image_request_operation_processing_queue(), ^(void) {
+                    UIImage *processedImage = imageProcessingBlock(image, radius, color);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu"
+                    dispatch_async(operation.successCallbackQueue ?: dispatch_get_main_queue(), ^(void) {
+                        success(operation, image, processedImage);
+                    });
+#pragma clang diagnostic pop
+                });
+            }
+        }
+    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+        if (failure) {
+            failure(operation, error);
+        }
+    }];
+    
+    
+    return requestOperation;
+}
+#endif
+
+
+#if defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
++ (instancetype)imageRequestOperationWithRequest:(NSURLRequest *)urlRequest
 							imageProcessingBlock:(UIImage *(^)(UIImage *))imageProcessingBlock
 										 success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image))success
 										 failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
