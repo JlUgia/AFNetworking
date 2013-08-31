@@ -120,8 +120,10 @@ static
     
     UIImage *cachedImage = [[[self class] af_sharedImageCache] cachedImageForRequest:urlRequest];
     
-    if (cachedImage) {
-        if (success) {
+    if (cachedImage)
+    {
+        if (success)
+        {
             success(nil, nil);
         }
         
@@ -130,7 +132,8 @@ static
         
     } else {
         
-        if (placeholderImage) {
+        if (placeholderImage)
+        {
             self.image = placeholderImage;
         }
         
@@ -140,10 +143,12 @@ static
             {
                     
                 dispatch_async(operation.successCallbackQueue ?: dispatch_get_main_queue(), ^(void) {
-                    if (success) {
+                    if (success)
+                    {
                         success(operation.request, operation.response);
                     }
-                    if (responseObject) {
+                    if (responseObject)
+                    {
                         self.image = responseObject;
                     }
                 });
