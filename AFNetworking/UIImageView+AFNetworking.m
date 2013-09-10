@@ -26,6 +26,7 @@
 #if defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
 #import "UIImageView+AFNetworking.h"
 #import "UIImage+Util.h"
+#import "NSURL+Util.h"
 
 static dispatch_queue_t image_request_operation_processing_queue() {
     static dispatch_queue_t af_image_request_operation_processing_queue;
@@ -104,7 +105,17 @@ static
 - (void)setImageWithURL:(NSURL *)url
        placeholderImage:(UIImage *)placeholderImage
 {
-    [self setImageWithURLRequest:url placeholderImage:placeholderImage success:nil failure:nil];
+    // Check if it's default image and load from resource
+    if(url.isDefaultUserAvatarUrl)
+    {
+        self.image = [UIImage imageNamed:url.pathComponents.lastObject];
+        [self cancelPlaybackImageRequestOperation];
+        playbackImageRequestOperation = nil;
+    }
+    else
+    {
+        [self setImageWithURLRequest:url placeholderImage:placeholderImage success:nil failure:nil];
+    }
 }
 
 - (void)setImageWithURLRequest:(NSURL *)url
