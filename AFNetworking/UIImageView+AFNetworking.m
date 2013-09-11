@@ -106,7 +106,7 @@ static
        placeholderImage:(UIImage *)placeholderImage
 {
     // Check if it's default image and load from resource
-    if(url.isDefaultUserAvatarUrl)
+    if(url != nil && url.isDefaultUserAvatarUrl)
     {
         self.image = [UIImage imageNamed:url.pathComponents.lastObject];
         [self cancelPlaybackImageRequestOperation];
