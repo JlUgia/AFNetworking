@@ -91,8 +91,7 @@
 
 
 + (instancetype)imageRequestOperationWithRequest:(NSURLRequest *)urlRequest
-                             blurProcessingBlock:(UIImage *(^)(UIImage * image, float radius, UIColor *color))imageProcessingBlock
-                                      withRadius:(float)radius
+                            imageProcessingBlock:(UIImage *(^)(UIImage * image, UIColor *color))imageProcessingBlock
                                            color:(UIColor *)color
 										 success:(void (^)(AFHTTPRequestOperation *operation, UIImage *image, UIImage *processedImage))success
 										 failure:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure;

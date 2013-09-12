@@ -71,15 +71,13 @@
 
 - (void)setImageWithURL:(NSURL *)url
        placeholderImage:(UIImage *)placeholderImage
-             blurRadius:(float)radius
              themeColor:(UIColor *)color
-      blurryImageSuffix:(NSString *)suffix;
+   processedImageSuffix:(NSString *)suffix;
 
 - (void)setImageWithURLRequest:(NSURLRequest *)urlRequest
               placeholderImage:(UIImage *)placeholderImage
-                    blurRadius:(float)radius
                     themeColor:(UIColor *)color
-             blurryImageSuffix:(NSString *)suffix
+          processedImageSuffix:(NSString *)suffix
                        success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image))success
                        failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure;
 

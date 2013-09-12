@@ -195,21 +195,19 @@ static
 
 - (void)setImageWithURL:(NSURL *)url
        placeholderImage:(UIImage *)placeholderImage
-             blurRadius:(float)radius
              themeColor:(UIColor *)color
-      blurryImageSuffix:(NSString *)suffix
+   processedImageSuffix:(NSString *)suffix
 {
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     [request addValue:@"image/*" forHTTPHeaderField:@"Accept"];
     
-    [self setImageWithURLRequest:request placeholderImage:placeholderImage blurRadius:radius themeColor:color blurryImageSuffix:suffix success:nil failure:nil];
+    [self setImageWithURLRequest:request placeholderImage:placeholderImage themeColor:color processedImageSuffix:suffix success:nil failure:nil];
 }
 
 - (void)setImageWithURLRequest:(NSURLRequest *)urlRequest
               placeholderImage:(UIImage *)placeholderImage
-                    blurRadius:(float)radius
                     themeColor:(UIColor *)color
-             blurryImageSuffix:(NSString *)suffix
+          processedImageSuffix:(NSString *)suffix
                        success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image))success
                        failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
 {
@@ -232,7 +230,7 @@ static
         
         AFImageRequestOperation *requestOperation = [AFImageRequestOperation
             imageRequestOperationWithRequest:urlRequest
-                blurProcessingBlock:^(UIImage *image, float radius, UIColor *color){
+                imageProcessingBlock:^(UIImage *image, UIColor *color){
                     
                     CIContext *context = [CIContext contextWithOptions:nil];
                     CIImage *inputImage = [[CIImage alloc] initWithImage:image];
@@ -243,7 +241,7 @@ static
                     CGFloat r, g, b, a;
                     [color getRed: &r green:&g blue:&b alpha:&a];
                     CIColor* black = [CIColor colorWithString:
-                                      [NSString stringWithFormat:@"%f %f %f 0.6", r, g, b]];
+                                      [NSString stringWithFormat:@"%f %f %f 0.97", r, g, b]];
                     [blackGenerator setValue:black forKey:@"inputColor"];
                     outputImage = [blackGenerator valueForKey:@"outputImage"];
                     
@@ -253,24 +251,18 @@ static
                     [compositeFilter setValue:inputImage forKey:@"inputBackgroundImage"];
                     outputImage = [compositeFilter outputImage];
                     
-                    // Prepare to avoid blur edges and blur
-                    CGAffineTransform transform = CGAffineTransformIdentity;
-                    CIFilter *clampFilter = [CIFilter filterWithName:@"CIAffineClamp"];
-                    [clampFilter setValue:outputImage forKey:kCIInputImageKey];
-                    [clampFilter setValue:[NSValue valueWithBytes:&transform objCType:@encode(CGAffineTransform)] forKey:@"inputTransform"];
-                    outputImage = [clampFilter outputImage];
-                                                         
-                    CIFilter *blurFilter = [CIFilter filterWithName:@"CIGaussianBlur"];
-                    [blurFilter setDefaults];
-                    [blurFilter setValue:outputImage forKey:kCIInputImageKey];
-                    [blurFilter setValue:[NSNumber numberWithFloat:radius] forKey:@"inputRadius"];
-                    outputImage = [blurFilter outputImage];
+                    CIFilter *bwFilter = [CIFilter filterWithName:@"CIColorControls"];
+                    [bwFilter setDefaults];
+                    [bwFilter setValue:outputImage forKey:kCIInputImageKey];
+                    [bwFilter setValue:[NSNumber numberWithFloat:0.005] forKey:@"inputBrightness"];
+                    [bwFilter setValue:[NSNumber numberWithFloat:1.0] forKey:@"inputContrast"];
+                    [bwFilter setValue:[NSNumber numberWithFloat:0.06] forKey:@"inputSaturation"];
+                    outputImage = bwFilter.outputImage;
                     
                     CGImageRef cgImage = [context createCGImage:outputImage fromRect:[inputImage extent]];
                                                          
                     return [UIImage imageWithCGImage:cgImage];
                 }
-                withRadius:radius
                 color:color
                 success:^(AFHTTPRequestOperation *operation, UIImage *image, UIImage *processedImage) {
                     if ([urlRequest isEqual:[self.af_imageRequestOperation request]]) {
