@@ -256,7 +256,7 @@ static
                     [bwFilter setValue:outputImage forKey:kCIInputImageKey];
                     [bwFilter setValue:[NSNumber numberWithFloat:0.005] forKey:@"inputBrightness"];
                     [bwFilter setValue:[NSNumber numberWithFloat:1.0] forKey:@"inputContrast"];
-                    [bwFilter setValue:[NSNumber numberWithFloat:0.06] forKey:@"inputSaturation"];
+                    [bwFilter setValue:[NSNumber numberWithFloat:0.1] forKey:@"inputSaturation"];
                     outputImage = bwFilter.outputImage;
                     
                     CGImageRef cgImage = [context createCGImage:outputImage fromRect:[inputImage extent]];
