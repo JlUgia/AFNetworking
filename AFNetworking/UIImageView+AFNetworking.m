@@ -201,16 +201,21 @@ static
     }
 }
 
-- (void)setImageWithURLRequest:(NSURL *)url
-              placeholderImage:(UIImage *)placeholderImage
-                       success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response))success
-                       failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
+
+- (void)setPlaybackImageWithURL:(NSURL *)url
+                        success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response))success
+                        failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
 {
+    [self cancelPlaybackImageRequestOperation];
+    
+    if(url == nil)
+    {
+        // Illegal state
+        return;
+    }
     
     NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:url];
     [urlRequest addValue:@"image/*" forHTTPHeaderField:@"Accept"];
-    
-    [self cancelPlaybackImageRequestOperation];
     
     UIImage *cachedImage = [[[self class] af_sharedImageCache] cachedImageForRequest:urlRequest];
     
