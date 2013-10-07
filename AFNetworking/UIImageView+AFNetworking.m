@@ -225,22 +225,14 @@ static
         {
             success(nil, nil);
         }
-        
         self.image = cachedImage;
-        playbackImageRequestOperation = nil;
-        
-    } else {
-        
-        if (placeholderImage)
-        {
-            self.image = placeholderImage;
-        }
-        
+    }
+    else
+    {
         AFImageRequestOperation *requestOperation = [[AFImageRequestOperation alloc] initWithRequest:urlRequest];
         [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
             if ([urlRequest isEqual:[playbackImageRequestOperation request]])
             {
-                    
                 dispatch_async(operation.successCallbackQueue ?: dispatch_get_main_queue(), ^(void) {
                     if (success)
                     {
