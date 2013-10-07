@@ -96,25 +96,108 @@ static
     return _af_imageCache;
 }
 
-#pragma mark -
 
 - (void)setImageWithURL:(NSURL *)url {
     [self setImageWithURL:url placeholderImage:nil];
 }
 
+
 - (void)setImageWithURL:(NSURL *)url
        placeholderImage:(UIImage *)placeholderImage
 {
-    // Check if it's default image and load from resource
-    if(url != nil && url.isDefaultUserAvatarUrl)
+    
+    [self setImageWithURL:url
+         placeholderImage:placeholderImage
+               themeColor:nil
+     imageProcessingBlock:nil
+     processedImageSuffix:nil
+              cacheOnDisk:YES];
+}
+
+
+- (void)setImageWithURL:(NSURL *)url
+       placeholderImage:(UIImage *)placeholderImage
+             themeColor:(UIColor *)color
+   imageProcessingBlock:(UIImage *(^)(UIImage * image, UIColor *color))imageProcessingBlock
+   processedImageSuffix:(NSString *)suffix
+            cacheOnDisk:(BOOL)cacheOnDisk
+{
+    [self cancelImageRequestOperation];
+    
+    if(url == nil)
+    {
+        if(placeholderImage) self.image = placeholderImage;
+        return;
+    }
+    else if(url.isDefaultUserAvatarUrl)
     {
         self.image = [UIImage imageNamed:url.pathComponents.lastObject];
-        [self cancelPlaybackImageRequestOperation];
-        playbackImageRequestOperation = nil;
+        return;
+    }
+    
+    NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:url];
+    [urlRequest addValue:@"image/*" forHTTPHeaderField:@"Accept"];
+    
+    UIImage *cachedImageInMemory = [[[self class] af_sharedImageCache] cachedImageForRequest:urlRequest withSuffix:suffix];
+    
+    if (cachedImageInMemory)
+    {
+        self.image = cachedImageInMemory;
     }
     else
     {
-        [self setImageWithURLRequest:url placeholderImage:placeholderImage success:nil failure:nil];
+        UIImage *cachedImageOnDisk = [UIImage imageWithCachedImageForFileName:url.pathComponents.lastObject];
+        if(cachedImageOnDisk)
+        {
+            self.image = cachedImageOnDisk;
+            return;
+        }
+        
+        if (placeholderImage) {
+            self.image = placeholderImage;
+        }
+        
+        AFImageRequestOperation *requestOperation = [AFImageRequestOperation
+            imageRequestOperationWithRequest:urlRequest
+            imageProcessingBlock:imageProcessingBlock
+            color:color
+            success:^(AFHTTPRequestOperation *operation, UIImage *image, UIImage *processedImage) {
+                if ([urlRequest isEqual:[self.af_imageRequestOperation request]]) {
+                    
+                    dispatch_async(operation.successCallbackQueue ?: dispatch_get_main_queue(), ^(void) {
+                        self.image = imageProcessingBlock && processedImage ? processedImage : image;
+                    });
+                    
+                    if (self.af_imageRequestOperation == operation)
+                    {
+                        self.af_imageRequestOperation = nil;
+                    }
+                }
+                if(cacheOnDisk)
+                {
+                    [image cacheImage:url.pathComponents.lastObject];
+                }
+                
+                [[[self class] af_sharedImageCache] cacheImage:image forRequest:urlRequest];
+                
+                if(imageProcessingBlock && processedImage)
+                {
+                    [[[self class] af_sharedImageCache] cacheImage:processedImage
+                                                        forRequest:urlRequest
+                                                        withSuffix:suffix];
+                }
+            }
+            failure:^(AFHTTPRequestOperation *operation, NSError *error){
+                if ([urlRequest isEqual:[self.af_imageRequestOperation request]]) {
+                    if (self.af_imageRequestOperation == operation)
+                    {
+                        self.af_imageRequestOperation = nil;
+                    }
+                }
+            }];
+        
+        self.af_imageRequestOperation = requestOperation;
+        [[[self class] af_sharedImageRequestOperationQueue] addOperation:self.af_imageRequestOperation];
     }
 }
 
