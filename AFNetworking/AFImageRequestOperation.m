@@ -174,6 +174,10 @@ static UIImage * AFInflatedImageFromResponseWithDataAtScale(NSHTTPURLResponse *r
                     });
 #pragma clang diagnostic pop
                 });
+            } else {
+                dispatch_async(operation.successCallbackQueue ?: dispatch_get_main_queue(), ^(void) {
+                    success(operation, image, nil);
+                });
             }
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
