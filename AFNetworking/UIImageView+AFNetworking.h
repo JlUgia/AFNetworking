@@ -61,6 +61,11 @@
    processedImageSuffix:(NSString *)suffix
             cacheOnDisk:(BOOL)cacheOnDisk;
 
+
+- (void)setPlaybackImageWithURL:(NSURL *)url
+                        success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response))success
+                        failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure;
+
 /**
  Cancels any executing image request operation for the receiver, if one exists.
  */
