@@ -249,141 +249,31 @@ static
                     playbackImageRequestOperation = nil;
                 }
             }
-            
             [[[self class] af_sharedImageCache] cacheImage:responseObject forRequest:urlRequest];
-            
-        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-            if ([urlRequest isEqual:[playbackImageRequestOperation request]])
-            {
-                if (failure)
-                {
-                    failure(operation.request, operation.response, error);
-                }
-                
-                if (playbackImageRequestOperation == operation)
-                {
-                    playbackImageRequestOperation = nil;
-                }
-            }
-        }];
+        }
+                                                failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+                                                    if ([urlRequest isEqual:[playbackImageRequestOperation request]])
+                                                    {
+                                                        if (failure)
+                                                        {
+                                                            failure(operation.request, operation.response, error);
+                                                        }
+                                                        
+                                                        if (playbackImageRequestOperation == operation)
+                                                        {
+                                                            playbackImageRequestOperation = nil;
+                                                        }
+                                                    }
+                                                }];
         
         playbackImageRequestOperation = requestOperation;
-        
         [[[self class] af_sharedImageRequestOperationQueue] addOperation:playbackImageRequestOperation];
     }
 }
 
-- (void)setImageWithURL:(NSURL *)url
-       placeholderImage:(UIImage *)placeholderImage
-             themeColor:(UIColor *)color
-   processedImageSuffix:(NSString *)suffix
-{
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-    [request addValue:@"image/*" forHTTPHeaderField:@"Accept"];
-    
-    [self setImageWithURLRequest:request placeholderImage:placeholderImage themeColor:color processedImageSuffix:suffix success:nil failure:nil];
-}
 
-- (void)setImageWithURLRequest:(NSURLRequest *)urlRequest
-              placeholderImage:(UIImage *)placeholderImage
-                    themeColor:(UIColor *)color
-          processedImageSuffix:(NSString *)suffix
-                       success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image))success
-                       failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
+- (void)cancelImageRequestOperation
 {
-    [self cancelImageRequestOperation];
-    
-    UIImage *cachedImage = [[[self class] af_sharedImageCache] cachedImageForRequest:urlRequest withSuffix:suffix];
-    
-    if (cachedImage) {
-        if (success) {
-            success(nil, nil, cachedImage);
-        } else {
-            self.image = cachedImage;
-        }
-        
-        self.af_imageRequestOperation = nil;
-    } else {
-        if (placeholderImage) {
-            self.image = placeholderImage;
-        }
-        
-        AFImageRequestOperation *requestOperation = [AFImageRequestOperation
-            imageRequestOperationWithRequest:urlRequest
-                imageProcessingBlock:^(UIImage *image, UIColor *color){
-                    
-                    CIContext *context = [CIContext contextWithOptions:nil];
-                    CIImage *inputImage = [[CIImage alloc] initWithImage:image];
-                    CIImage *outputImage;
-                    
-                    // First, create some darkness
-                    CIFilter* blackGenerator = [CIFilter filterWithName:@"CIConstantColorGenerator"];
-                    CGFloat r, g, b, a;
-                    [color getRed: &r green:&g blue:&b alpha:&a];
-                    CIColor* black = [CIColor colorWithString:
-                                      [NSString stringWithFormat:@"%f %f %f 0.97", r, g, b]];
-                    [blackGenerator setValue:black forKey:@"inputColor"];
-                    outputImage = [blackGenerator valueForKey:@"outputImage"];
-                    
-                    // Second, apply that black
-                    CIFilter *compositeFilter = [CIFilter filterWithName:@"CIMultiplyBlendMode"];
-                    [compositeFilter setValue:outputImage forKey:kCIInputImageKey];
-                    [compositeFilter setValue:inputImage forKey:@"inputBackgroundImage"];
-                    outputImage = [compositeFilter outputImage];
-                    
-                    CIFilter *bwFilter = [CIFilter filterWithName:@"CIColorControls"];
-                    [bwFilter setDefaults];
-                    [bwFilter setValue:outputImage forKey:kCIInputImageKey];
-                    [bwFilter setValue:[NSNumber numberWithFloat:0.005] forKey:@"inputBrightness"];
-                    [bwFilter setValue:[NSNumber numberWithFloat:1.0] forKey:@"inputContrast"];
-                    [bwFilter setValue:[NSNumber numberWithFloat:0.1] forKey:@"inputSaturation"];
-                    outputImage = bwFilter.outputImage;
-                    
-                    CGImageRef cgImage = [context createCGImage:outputImage fromRect:[inputImage extent]];
-                                                         
-                    return [UIImage imageWithCGImage:cgImage];
-                }
-                color:color
-                success:^(AFHTTPRequestOperation *operation, UIImage *image, UIImage *processedImage) {
-                    if ([urlRequest isEqual:[self.af_imageRequestOperation request]]) {
-                                                             
-                        dispatch_async(operation.successCallbackQueue ?: dispatch_get_main_queue(), ^(void) {
-                            if (success) {
-                                success(operation.request, operation.response, processedImage);
-                            } else if (processedImage) {
-                                self.image = processedImage;
-                            }
-                        });
-                    
-                        if (self.af_imageRequestOperation == operation) {
-                            self.af_imageRequestOperation = nil;
-                        }
-                    }
-                                                         
-                    [[[self class] af_sharedImageCache] cacheImage:image forRequest:urlRequest];
-                    [[[self class] af_sharedImageCache] cacheImage:processedImage
-                                                        forRequest:urlRequest
-                                                        withSuffix:suffix];
-                }
-                failure:^(AFHTTPRequestOperation *operation, NSError *error){
-                    if ([urlRequest isEqual:[self.af_imageRequestOperation request]]) {
-                        if (failure) {
-                            failure(operation.request, operation.response, error);
-                        }
-                                                             
-                        if (self.af_imageRequestOperation == operation) {
-                            self.af_imageRequestOperation = nil;
-                        }
-                    }
-                }];
-        
-        self.af_imageRequestOperation = requestOperation;
-        
-        [[[self class] af_sharedImageRequestOperationQueue] addOperation:self.af_imageRequestOperation];
-    }
-}
-
-- (void)cancelImageRequestOperation {
     [self.af_imageRequestOperation cancel];
     self.af_imageRequestOperation = nil;
 }
