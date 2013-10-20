@@ -146,7 +146,8 @@ static
     }
     else
     {
-        UIImage *cachedImageOnDisk = [UIImage imageWithCachedImageForFileName:url.pathComponents.lastObject];
+        UIImage *cachedImageOnDisk = [UIImage imageWithCachedImageForFileName:url.pathComponents.lastObject
+                                                                   withSuffix:suffix];
         if(cachedImageOnDisk)
         {
             self.image = cachedImageOnDisk;
