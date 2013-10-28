@@ -146,8 +146,7 @@ static
     }
     else
     {
-        UIImage *cachedImageOnDisk = [UIImage imageWithCachedImageForFileName:url.pathComponents.lastObject
-                                                                   withSuffix:suffix];
+        UIImage *cachedImageOnDisk = [UIImage imageWithCachedImageForFileName:url.filenameIdentifier withSuffix:suffix];
         if(cachedImageOnDisk)
         {
             self.image = cachedImageOnDisk;
@@ -176,7 +175,7 @@ static
                 }
                 if(cacheOnDisk)
                 {
-                    [image cacheImage:url.pathComponents.lastObject];
+                    [image cacheImage:url.filenameIdentifier];
                 }
                 
                 [[[self class] af_sharedImageCache] cacheImage:image forRequest:urlRequest];
