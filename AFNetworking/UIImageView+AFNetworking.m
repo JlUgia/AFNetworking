@@ -293,6 +293,19 @@ static inline NSString * AFImageCacheKeyFromURLRequest(NSURLRequest *request) {
 
 @implementation AFImageCache
 
+- (id)init
+{
+    self = [super init];
+    if (!self)
+    {
+        return nil;
+    }
+    
+    self.countLimit = 20;
+    
+    return self;
+}
+
 - (UIImage *)cachedImageForRequest:(NSURLRequest *)request {
     
     return [self cachedImageForRequest:request withSuffix:nil];
