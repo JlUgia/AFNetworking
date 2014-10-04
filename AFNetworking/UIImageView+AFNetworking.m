@@ -131,7 +131,17 @@ static
     }
     else if(url.isDefaultUserAvatarUrl)
     {
-        self.image = [UIImage imageNamed:url.pathComponents.lastObject];
+        UIImage *defaultAvatar = [UIImage imageNamed:url.pathComponents.lastObject];
+        if (imageProcessingBlock)
+        {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.image = imageProcessingBlock(defaultAvatar, nil);
+            });
+        }
+        else
+        {
+            self.image = defaultAvatar;
+        }
         return;
     }
     
